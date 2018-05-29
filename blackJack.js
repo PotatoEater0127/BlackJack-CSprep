@@ -20,6 +20,10 @@ function blackjack() {
       this.hit();
     }
 
+    displayHand() {
+      return this.hand.map(card => card.suit + card.value);
+    }
+
     hit() {
       return this.addCards(1);
     }
@@ -33,29 +37,36 @@ function blackjack() {
 
     calcSum() {
       let cardSum = this.hand.reduce((sum, cur) => {
-        if (cur === 'J' || cur === 'Q' || cur === 'K') {
+        if (cur.value === 'J' || cur.value === 'Q' || cur.value === 'K') {
           sum += 10;
           return sum;
-        } else if (cur === 'A') {
+        } else if (cur.value === 'A') {
           sum += 11;
           return sum;
         } else {
-          sum += cur;
+          sum += cur.value;
           return sum;
         }
       }, 0);
-      if (cardSum > 21 && this.hand.includes('A')) cardSum -= 10;
+      let values = this.hand.map(card => card.value);
+      while (cardSum > 21 && values.includes('A')) {
+        cardSum -= 10;
+        values.splice(values.indexOf('A'), 1);
+      }
       return cardSum;
     }
-    } //class ends
+  } //class ends
 
   //-----------------------------START functions for cards and shuffle-------------------------------
 
   function deckOCards() {
-    const deck = ['A','A','A','A',2,2,2,2,3,3,3,3,4,
-                  4,4,4,5,5,5,5,6,6,6,6,7,7,7,7,8,8,
-                  8,8,9,9,9,9,10,10,10,10,'J','J','J',
-                  'J','Q','Q','Q','Q','K','K','K','K'];
+    let suits = ['♠', '♦', '♥', '♣'];
+    let values = [2, 3, 4, 5, 6, 7, 8, 9, 10, 'A', 'J', 'Q', 'K'];
+    let deck = [];
+    suits.forEach((suit) => {
+      let cards = values.map((value) => ({suit: suit, value: value}));
+      deck = deck.concat(cards);
+    });
     // whenever deckOCards is invoked, we shuffle it
     const shuffled = shuffle(deck);
     return shuffled;
@@ -78,9 +89,72 @@ function blackjack() {
     return array;
   } // shuffle ends
 
+//// print cards ////
+function printBothHands(playerHand, dealerHand, isDealerCardFacedDown = false) {
+  let lines = ['', '', '', '', '', '', '', '', ''];
+  let spaceSize = 5;
+  drawCards(playerHand, lines, false);
+  drawSpaces(spaceSize, lines);
+  drawCards(dealerHand, lines, isDealerCardFacedDown);
+  console.log(lines.join('\n'));
+}
+
+function drawCards(cards, lines, isFacedDown) {
+  // dealer's first card could be faced down
+  if (isFacedDown) {
+    drawFaceDownCard(lines);
+  } else {
+    drawCard(cards[0], lines);
+  }
+  cards.slice(1).forEach((card) => { drawCard(card, lines);});
+}
+
+function drawCard(card, lines) {
+  let value = card.value;
+  let suit = card.suit;
+  let topLeft = value.toString();
+  let bottomRight = value.toString();
+
+  // If the card isn't 10, we pad the value to 2-digit size,
+  // to make sure every card has the same width.
+  if (value !== 10) {
+    topLeft =  ' ' + topLeft;
+    bottomRight = bottomRight + ' ';
+  }
+  lines[0] += `┌─────────┐`;
+  lines[1] += `│${topLeft}       │`;
+  lines[2] += `│         │`;
+  lines[3] += `│         │`;
+  lines[4] += `│    ${suit}    │`;
+  lines[5] += `│         │`;
+  lines[6] += `│         │`;
+  lines[7] += `│       ${bottomRight}│`;
+  lines[8] += `└─────────┘`;
+}
+
+function drawFaceDownCard(lines) {
+  lines[0] += `┌─────────┐`;
+  lines[1] += `│░░░░░░░░░│`;
+  lines[2] += `│░░░░░░░░░│`;
+  lines[3] += `│░░░░░░░░░│`;
+  lines[4] += `│░░░░░░░░░│`;
+  lines[5] += `│░░░░░░░░░│`;
+  lines[6] += `│░░░░░░░░░│`;
+  lines[7] += `│░░░░░░░░░│`;
+  lines[8] += `└─────────┘`;
+}
+
+function drawSpaces(spaceSize, lines) {
+  for (var i = 0; i < lines.length; i++) {
+    lines[i] += ' '.repeat(spaceSize);
+  }
+}
+//// print cards ends////
+
   let outcomes = () => {
-    console.log("Player: [" + player.hand + "] (" + player.calcSum() + ") | Dealer: ["
-                    + dealer.hand + "] (" + dealer.calcSum() + ")");
+    printBothHands(player.hand, dealer.hand, false);
+    console.log("Player: [" + player.displayHand() + "] (" + player.calcSum() + ") | Dealer: ["
+                    + dealer.displayHand() + "] (" + dealer.calcSum() + ")");
   }
 
   function whoWins() {
@@ -125,7 +199,7 @@ function blackjack() {
         return 1;
       } else if (dealer.calcSum() === 21) {
         // player loses bet
-        console.log("Dealer wins! Dealer has " + dealer.hand);
+        console.log("Dealer wins! Dealer has " + dealer.displayHand());
         return 1;
       } else return 0;
   } //end of check21
@@ -165,7 +239,7 @@ function blackjack() {
     }
 
     function stand() {
-      console.log("You stand with [" + player.hand + "] (" + player.calcSum() + "). It is now the dealer's turn.");
+      console.log("You stand with [" + player.displayHand() + "] (" + player.calcSum() + "). It is now the dealer's turn.");
       dealerTurn();
     }
 
@@ -178,12 +252,14 @@ function blackjack() {
         // if player double downs
         if (option === '3') {
           player.doubleDown();
-          console.log("Double down! Your hand is now [" + player.hand + "] with a value of " + player.calcSum() + ".");
+          printBothHands(player.hand, dealer.hand, true);
+          console.log("Double down! Your hand is now [" + player.displayHand() + "] with a value of " + player.calcSum() + ".");
           stand();
           return;
         } else { // else if player hits
           player.hit();
-          console.log("Hit! Your hand is now [" + player.hand + "] with a value of " + player.calcSum() + ".");
+          printBothHands(player.hand, dealer.hand, true);
+          console.log("Hit! Your hand is now [" + player.displayHand() + "] with a value of " + player.calcSum() + ".");
         }
         if (player.calcSum() >= 21) return; // player busts, end of round
         option = userPrompt();
@@ -214,7 +290,8 @@ function blackjack() {
     player.createHand();
     dealer.createHand();
     // show player's hand and reveal one of the dealer's cards
-    console.log("Your hand is [" + player.hand + "] (" + player.calcSum() + "). The dealer has [" + dealer.hand[0] + ", X].");
+    printBothHands(player.hand, dealer.hand, true);
+    console.log("Your hand is [" + player.displayHand() + "] (" + player.calcSum() + "). The dealer has [X, " + dealer.displayHand()[0] + "].");
 
     if (check21() === 1) {
       return; //player or dealer has blackjack, end of round
