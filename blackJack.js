@@ -1,4 +1,5 @@
 function blackjack() {
+  // 😎
   let betAmount;
   let shuffleDeck = deckOCards();
   class Player {
